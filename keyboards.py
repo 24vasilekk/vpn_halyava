@@ -32,26 +32,24 @@ def get_device_options_keyboard():
 
 def get_payment_keyboard():
     keyboard = [
-        [InlineKeyboardButton("💳 150₽/месяц (Банковская карта)", callback_data='pay_yookassa')],
-        [InlineKeyboardButton("⭐ 100 Stars/месяц", callback_data='pay_stars')],
-        [InlineKeyboardButton("₿ 1.5 USDT/месяц (Crypto)", callback_data='pay_crypto')],
-        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
-    ]
-    return InlineKeyboardMarkup(keyboard)
-
-def get_crypto_currency_keyboard():
-    keyboard = [
-        [InlineKeyboardButton("₿ Bitcoin (BTC)", callback_data='crypto_BTC')],
-        [InlineKeyboardButton("💎 Ethereum (ETH)", callback_data='crypto_ETH')],
-        [InlineKeyboardButton("💵 USDT (TRC20)", callback_data='crypto_USDT')],
-        [InlineKeyboardButton("💵 USDC", callback_data='crypto_USDC')],
-        [InlineKeyboardButton("⬅️ Назад", callback_data='pay_subscription')],
+        [InlineKeyboardButton("💳 149₽/месяц (Банковская карта)", callback_data='pay_yookassa')],
+        [InlineKeyboardButton("⭐ 159 Stars/месяц", callback_data='pay_stars')],
         [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 def get_back_to_menu_keyboard():
     keyboard = [
+        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def get_admin_keyboard():
+    keyboard = [
+        [InlineKeyboardButton("📊 Общая статистика", callback_data='admin_stats')],
+        [InlineKeyboardButton("🎁 Пробные пользователи", callback_data='admin_trial_users')],
+        [InlineKeyboardButton("💎 Платные пользователи", callback_data='admin_paid_users')],
+        [InlineKeyboardButton("💳 Последние платежи", callback_data='admin_recent_payments')],
         [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
     ]
     return InlineKeyboardMarkup(keyboard)

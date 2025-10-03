@@ -22,15 +22,18 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db):
     subscription = db.get_active_subscription(user_id)
     
     if not subscription:
-        # Активируем пробный период
-        vpn_key = VPNService.generate_vpn_key(user_id)
-        db.activate_trial(user_id, vpn_key)
+        # Генерируем VPN ключ и UUID (с await, так как функция async)
+        vpn_key, user_uuid = await VPNService.generate_vpn_key(user_id, is_trial=True)
         
-        # Генерируем реферальную ссылку
-        bot_username = context.bot.username
-        ref_link = generate_referral_link(bot_username, user_id)
-        
-        message = f"""
+        if vpn_key and user_uuid:
+            # Активируем пробный период
+            db.activate_trial(user_id, vpn_key, user_uuid)
+            
+            # Генерируем реферальную ссылку
+            bot_username = context.bot.username
+            ref_link = generate_referral_link(bot_username, user_id)
+            
+            message = f"""
 🎉 Добро пожаловать в VPN бот!
 
 ✅ Ваша тестовая подписка на {TRIAL_DURATION_DAYS} дня активирована!
@@ -41,7 +44,14 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db):
 {ref_link}
 
 Выберите действие:
-        """
+            """
+        else:
+            message = """
+❌ Произошла ошибка при активации пробного периода.
+Пожалуйста, попробуйте позже или обратитесь в поддержку.
+
+Выберите действие:
+            """
     else:
         message = """
 👋 С возвращением!

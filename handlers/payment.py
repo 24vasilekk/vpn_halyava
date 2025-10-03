@@ -68,31 +68,37 @@ async def check_payment_command(update: Update, context: ContextTypes.DEFAULT_TY
         is_paid = YooKassaService.check_payment(payment_id)
         
         if is_paid:
-            # Генерируем новый ключ
-            vpn_key = VPNService.generate_vpn_key(user_id)
+            # Генерируем новый ключ (async функция!)
+            vpn_key, user_uuid = await VPNService.generate_vpn_key(user_id, is_trial=False)
             
-            # Активируем подписку
-            db.add_subscription(user_id, vpn_key, SUBSCRIPTION_DURATION_DAYS)
-            
-            # Обновляем статус платежа
-            db.update_payment_status(payment_id, 'paid')
-            
-            # Начисляем бонус рефереру
-            user_data = db.get_user(user_id)
-            if user_data and user_data[2]:  # referrer_id
-                referrer_id = user_data[2]
-                bonus = calculate_referral_bonus(SUBSCRIPTION_PRICE)
-                db.update_balance(referrer_id, bonus)
-            
-            # Очищаем pending payment
-            context.user_data.pop('pending_payment_id', None)
-            
-            await update.message.reply_text(
-                f"✅ Платеж успешно обработан!\n\n"
-                f"🎉 Подписка активирована на {SUBSCRIPTION_DURATION_DAYS} дней!\n\n"
-                f"Используйте кнопку 'Настроить VPN' для получения ключа.",
-                reply_markup=get_main_keyboard()
-            )
+            if vpn_key and user_uuid:
+                # Активируем подписку
+                db.add_subscription(user_id, vpn_key, user_uuid, SUBSCRIPTION_DURATION_DAYS)
+                
+                # Обновляем статус платежа
+                db.update_payment_status(payment_id, 'paid')
+                
+                # Начисляем бонус рефереру
+                user_data = db.get_user(user_id)
+                if user_data and user_data[2]:  # referrer_id
+                    referrer_id = user_data[2]
+                    bonus = calculate_referral_bonus(SUBSCRIPTION_PRICE)
+                    db.update_balance(referrer_id, bonus)
+                
+                # Очищаем pending payment
+                context.user_data.pop('pending_payment_id', None)
+                
+                await update.message.reply_text(
+                    f"✅ Платеж успешно обработан!\n\n"
+                    f"🎉 Подписка активирована на {SUBSCRIPTION_DURATION_DAYS} дней!\n\n"
+                    f"Используйте кнопку 'Настроить VPN' для получения ключа.",
+                    reply_markup=get_main_keyboard()
+                )
+            else:
+                await update.message.reply_text(
+                    "❌ Ошибка генерации VPN ключа. Обратитесь в поддержку.",
+                    reply_markup=get_main_keyboard()
+                )
         else:
             await update.message.reply_text(
                 "⏳ Платеж еще не обработан. Пожалуйста, подождите немного и попробуйте снова.",
