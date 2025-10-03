@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 from keyboards import get_payment_keyboard, get_main_keyboard
-from services.payment_service import PaymentService
+from services.yookassa_service import YooKassaService
 from services.vpn_service import VPNService
 from utils.referral import calculate_referral_bonus
 from config import SUBSCRIPTION_PRICE, SUBSCRIPTION_DURATION_DAYS
@@ -21,12 +21,18 @@ async def pay_yoomoney_callback(update: Update, context: ContextTypes.DEFAULT_TY
     
     user_id = query.from_user.id
     
-    # Создаем платеж
-    payment_service = PaymentService()
-    payment_url, payment_id = payment_service.create_payment(user_id, SUBSCRIPTION_PRICE)
+    # Создаем платеж через ЮКассу
+    payment_url, payment_id = YooKassaService.create_payment(user_id, SUBSCRIPTION_PRICE)
+    
+    if not payment_url:
+        await query.edit_message_text(
+            "❌ Ошибка создания платежа. Попробуйте позже.",
+            reply_markup=get_main_keyboard()
+        )
+        return
     
     # Сохраняем платеж в базу
-    db.add_payment(user_id, SUBSCRIPTION_PRICE, payment_id, 'yoomoney', 'pending')
+    db.add_payment(user_id, SUBSCRIPTION_PRICE, payment_id, 'yookassa', 'pending')
     
     # Сохраняем payment_id в контекст для проверки
     context.user_data['pending_payment_id'] = payment_id
@@ -51,8 +57,7 @@ async def check_payment_command(update: Update, context: ContextTypes.DEFAULT_TY
         )
         return
     
-    payment_service = PaymentService()
-    is_paid = payment_service.check_payment(payment_id)
+    is_paid = YooKassaService.check_payment(payment_id)
     
     if is_paid:
         # Генерируем новый ключ
