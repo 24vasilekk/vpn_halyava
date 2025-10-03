@@ -68,7 +68,7 @@ def main():
         CommandHandler("start", lambda u, c: start_command(u, c, db))
     )
     
-    # Команда /check_payment - проверка оплаты через ЮMoney
+    # Команда /check_payment - проверка оплаты через ЮКассу
     application.add_handler(
         CommandHandler("check_payment", lambda u, c: check_payment_command(u, c, db))
     )
@@ -115,13 +115,12 @@ def main():
         CallbackQueryHandler(payment_callback, pattern='^pay_subscription$')
     )
     
-    # Оплата через ЮMoney
     # Оплата через ЮКассу
     application.add_handler(
         CallbackQueryHandler(lambda u, c: pay_yookassa_callback(u, c, db), pattern='^pay_yookassa$')
     )
     
-    logger.info("Обработчики платежей ЮMoney добавлены")
+    logger.info("Обработчики платежей ЮКассу добавлены")
     
     # ========================================
     # ОБРАБОТЧИКИ CALLBACK КНОПОК - TELEGRAM STARS
