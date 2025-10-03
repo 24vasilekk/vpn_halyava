@@ -20,12 +20,13 @@ class Database:
             )
         ''')
         
-        # Таблица подписок
+        # Таблица подписок (добавлено поле user_uuid)
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS subscriptions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
                 vpn_key TEXT,
+                user_uuid TEXT,
                 start_date TIMESTAMP,
                 end_date TIMESTAMP,
                 is_trial BOOLEAN DEFAULT 0,
@@ -34,7 +35,7 @@ class Database:
             )
         ''')
         
-        # Таблица платежей (обновленная)
+        # Таблица платежей
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS payments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,15 +67,15 @@ class Database:
         self.cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
         return self.cursor.fetchone()
     
-    def activate_trial(self, user_id, vpn_key):
+    def activate_trial(self, user_id, vpn_key, user_uuid):
         start_date = datetime.now()
         end_date = start_date + timedelta(days=TRIAL_DURATION_DAYS)
         
         try:
             self.cursor.execute('''
-                INSERT INTO subscriptions (user_id, vpn_key, start_date, end_date, is_trial, is_active)
-                VALUES (?, ?, ?, ?, 1, 1)
-            ''', (user_id, vpn_key, start_date, end_date))
+                INSERT INTO subscriptions (user_id, vpn_key, user_uuid, start_date, end_date, is_trial, is_active)
+                VALUES (?, ?, ?, ?, ?, 1, 1)
+            ''', (user_id, vpn_key, user_uuid, start_date, end_date))
             self.connection.commit()
             return True
         except Exception as e:
@@ -89,15 +90,15 @@ class Database:
         ''', (user_id, datetime.now()))
         return self.cursor.fetchone()
     
-    def add_subscription(self, user_id, vpn_key, duration_days=30):
+    def add_subscription(self, user_id, vpn_key, user_uuid, duration_days=30):
         start_date = datetime.now()
         end_date = start_date + timedelta(days=duration_days)
         
         try:
             self.cursor.execute('''
-                INSERT INTO subscriptions (user_id, vpn_key, start_date, end_date, is_trial, is_active)
-                VALUES (?, ?, ?, ?, 0, 1)
-            ''', (user_id, vpn_key, start_date, end_date))
+                INSERT INTO subscriptions (user_id, vpn_key, user_uuid, start_date, end_date, is_trial, is_active)
+                VALUES (?, ?, ?, ?, ?, 0, 1)
+            ''', (user_id, vpn_key, user_uuid, start_date, end_date))
             self.connection.commit()
             return True
         except Exception as e:
@@ -141,6 +142,121 @@ class Database:
         except Exception as e:
             print(f"Error updating balance: {e}")
             return False
+    
+    # ========================================
+    # АДМИН ФУНКЦИИ
+    # ========================================
+    
+    def get_all_users_count(self):
+        """Получает общее количество пользователей"""
+        self.cursor.execute('SELECT COUNT(*) FROM users')
+        return self.cursor.fetchone()[0]
+    
+    def get_trial_users(self):
+        """Получает всех пользователей с пробным периодом"""
+        self.cursor.execute('''
+            SELECT 
+                u.user_id,
+                u.username,
+                s.start_date,
+                s.end_date,
+                s.is_active
+            FROM users u
+            JOIN subscriptions s ON u.user_id = s.user_id
+            WHERE s.is_trial = 1
+            ORDER BY s.end_date DESC
+        ''')
+        return self.cursor.fetchall()
+    
+    def get_paid_users(self):
+        """Получает всех пользователей с платной подпиской"""
+        self.cursor.execute('''
+            SELECT 
+                u.user_id,
+                u.username,
+                s.start_date,
+                s.end_date,
+                s.is_active
+            FROM users u
+            JOIN subscriptions s ON u.user_id = s.user_id
+            WHERE s.is_trial = 0
+            ORDER BY s.end_date DESC
+        ''')
+        return self.cursor.fetchall()
+    
+    def get_active_subscriptions_count(self):
+        """Получает количество активных подписок"""
+        self.cursor.execute('''
+            SELECT COUNT(*) FROM subscriptions 
+            WHERE is_active = 1 AND end_date > ?
+        ''', (datetime.now(),))
+        return self.cursor.fetchone()[0]
+    
+    def get_expired_subscriptions(self):
+        """Получает истекшие подписки"""
+        self.cursor.execute('''
+            SELECT 
+                u.user_id,
+                u.username,
+                s.user_uuid,
+                s.end_date,
+                s.is_trial
+            FROM users u
+            JOIN subscriptions s ON u.user_id = s.user_id
+            WHERE s.is_active = 1 AND s.end_date < ?
+        ''', (datetime.now(),))
+        return self.cursor.fetchall()
+    
+    def deactivate_subscription(self, user_id):
+        """Деактивирует подписку пользователя"""
+        try:
+            self.cursor.execute('''
+                UPDATE subscriptions SET is_active = 0 
+                WHERE user_id = ? AND is_active = 1
+            ''', (user_id,))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Error deactivating subscription: {e}")
+            return False
+    
+    def get_total_revenue(self):
+        """Получает общую сумму платежей"""
+        self.cursor.execute('''
+            SELECT COALESCE(SUM(amount), 0) FROM payments 
+            WHERE status = 'paid'
+        ''')
+        return self.cursor.fetchone()[0]
+    
+    def get_revenue_by_method(self):
+        """Получает статистику по методам оплаты"""
+        self.cursor.execute('''
+            SELECT 
+                payment_method,
+                COUNT(*) as count,
+                SUM(amount) as total
+            FROM payments
+            WHERE status = 'paid'
+            GROUP BY payment_method
+        ''')
+        return self.cursor.fetchall()
+    
+    def get_recent_payments(self, limit=10):
+        """Получает последние платежи"""
+        self.cursor.execute('''
+            SELECT 
+                p.user_id,
+                u.username,
+                p.amount,
+                p.payment_method,
+                p.status,
+                p.created_at
+            FROM payments p
+            JOIN users u ON p.user_id = u.user_id
+            ORDER BY p.created_at DESC
+            LIMIT ?
+        ''', (limit,))
+        return self.cursor.fetchall()
     
     def close(self):
         self.connection.close()
