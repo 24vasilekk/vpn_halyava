@@ -22,11 +22,6 @@ from handlers.payment import (
     pay_yookassa_callback, 
     check_payment_command
 )
-from handlers.crypto_payment import (
-    crypto_payment_callback, 
-    crypto_currency_callback, 
-    check_crypto_payment_command
-)
 from handlers.stars_payment import (
     stars_payment_callback, 
     precheckout_callback, 
@@ -36,6 +31,13 @@ from handlers.help import (
     help_callback, 
     terms_callback, 
     main_menu_callback
+)
+from handlers.admin import (
+    admin_command,
+    admin_stats_callback,
+    admin_trial_users_callback,
+    admin_paid_users_callback,
+    admin_recent_payments_callback
 )
 
 # Настройка логирования
@@ -73,9 +75,9 @@ def main():
         CommandHandler("check_payment", lambda u, c: check_payment_command(u, c, db))
     )
     
-    # Команда /check_crypto_payment - проверка крипто-платежа
+    # Команда /admin - админ-панель
     application.add_handler(
-        CommandHandler("check_crypto_payment", lambda u, c: check_crypto_payment_command(u, c, db))
+        CommandHandler("admin", lambda u, c: admin_command(u, c, db))
     )
     
     logger.info("Обработчики команд добавлены")
@@ -147,22 +149,6 @@ def main():
     logger.info("Обработчики Telegram Stars добавлены")
     
     # ========================================
-    # ОБРАБОТЧИКИ CALLBACK КНОПОК - КРИПТОВАЛЮТЫ
-    # ========================================
-    
-    # Кнопка "Оплатить криптой" - выбор криптовалюты
-    application.add_handler(
-        CallbackQueryHandler(crypto_payment_callback, pattern='^pay_crypto$')
-    )
-    
-    # Выбор конкретной криптовалюты (BTC, ETH, USDT, etc.)
-    application.add_handler(
-        CallbackQueryHandler(lambda u, c: crypto_currency_callback(u, c, db), pattern='^crypto_')
-    )
-    
-    logger.info("Обработчики CryptoBot добавлены")
-    
-    # ========================================
     # ОБРАБОТЧИКИ CALLBACK КНОПОК - ПОМОЩЬ И ПРАВИЛА
     # ========================================
     
@@ -182,6 +168,32 @@ def main():
     )
     
     logger.info("Обработчики помощи и правил добавлены")
+    
+    # ========================================
+    # ОБРАБОТЧИКИ CALLBACK КНОПОК - АДМИН ПАНЕЛЬ
+    # ========================================
+    
+    # Админ панель - статистика
+    application.add_handler(
+        CallbackQueryHandler(lambda u, c: admin_stats_callback(u, c, db), pattern='^admin_stats$')
+    )
+    
+    # Админ панель - пробные пользователи
+    application.add_handler(
+        CallbackQueryHandler(lambda u, c: admin_trial_users_callback(u, c, db), pattern='^admin_trial_users$')
+    )
+    
+    # Админ панель - платные пользователи
+    application.add_handler(
+        CallbackQueryHandler(lambda u, c: admin_paid_users_callback(u, c, db), pattern='^admin_paid_users$')
+    )
+    
+    # Админ панель - последние платежи
+    application.add_handler(
+        CallbackQueryHandler(lambda u, c: admin_recent_payments_callback(u, c, db), pattern='^admin_recent_payments$')
+    )
+    
+    logger.info("Обработчики админ-панели добавлены")
     
     # ========================================
     # ОБРАБОТЧИК ОШИБОК
