@@ -32,7 +32,7 @@ def get_device_options_keyboard():
 
 def get_payment_keyboard():
     keyboard = [
-        [InlineKeyboardButton("💳 150₽/месяц (ЮMoney)", callback_data='pay_yoomoney')],
+        [InlineKeyboardButton("💳 150₽/месяц (Банковская карта)", callback_data='pay_yookassa')],
         [InlineKeyboardButton("⭐ 100 Stars/месяц", callback_data='pay_stars')],
         [InlineKeyboardButton("₿ 1.5 USDT/месяц (Crypto)", callback_data='pay_crypto')],
         [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]

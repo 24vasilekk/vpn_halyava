@@ -19,7 +19,7 @@ from handlers.vpn_setup import (
 )
 from handlers.payment import (
     payment_callback, 
-    pay_yoomoney_callback, 
+    pay_yookassa_callback, 
     check_payment_command
 )
 from handlers.crypto_payment import (
@@ -116,8 +116,9 @@ def main():
     )
     
     # Оплата через ЮMoney
+    # Оплата через ЮКассу
     application.add_handler(
-        CallbackQueryHandler(lambda u, c: pay_yoomoney_callback(u, c, db), pattern='^pay_yoomoney$')
+        CallbackQueryHandler(lambda u, c: pay_yookassa_callback(u, c, db), pattern='^pay_yookassa$')
     )
     
     logger.info("Обработчики платежей ЮMoney добавлены")

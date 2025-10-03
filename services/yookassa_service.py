@@ -2,15 +2,16 @@ from yookassa import Configuration, Payment
 import uuid
 from config import YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY, SUBSCRIPTION_PRICE
 
-Configuration.account_id = YOOKASSA_SHOP_ID
-Configuration.secret_key = YOOKASSA_SECRET_KEY
-
 class YooKassaService:
     @staticmethod
     def create_payment(user_id, amount=SUBSCRIPTION_PRICE):
         """
         Создает платеж через ЮКассу
         """
+        # Настройка конфигурации
+        Configuration.account_id = YOOKASSA_SHOP_ID
+        Configuration.secret_key = YOOKASSA_SECRET_KEY
+        
         payment_id = str(uuid.uuid4())
         
         try:
@@ -33,6 +34,8 @@ class YooKassaService:
             return payment.confirmation.confirmation_url, payment.id
         except Exception as e:
             print(f"Error creating YooKassa payment: {e}")
+            print(f"Shop ID: {YOOKASSA_SHOP_ID}")
+            print(f"Secret Key: {YOOKASSA_SECRET_KEY[:10]}...")
             return None, None
     
     @staticmethod
@@ -41,6 +44,9 @@ class YooKassaService:
         Проверяет статус платежа
         """
         try:
+            Configuration.account_id = YOOKASSA_SHOP_ID
+            Configuration.secret_key = YOOKASSA_SECRET_KEY
+            
             payment = Payment.find_one(payment_id)
             return payment.status == "succeeded"
         except Exception as e:
