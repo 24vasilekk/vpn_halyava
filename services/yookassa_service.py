@@ -26,6 +26,24 @@ class YooKassaService:
                 },
                 "capture": True,
                 "description": f"Подписка VPN на 30 дней для пользователя {user_id}",
+                "receipt": {
+                    "customer": {
+                        "email": f"user{user_id}@vpnbot.ru"
+                    },
+                    "items": [
+                        {
+                            "description": "Подписка VPN на 30 дней",
+                            "quantity": "1.00",
+                            "amount": {
+                                "value": f"{amount:.2f}",
+                                "currency": "RUB"
+                            },
+                            "vat_code": 1,  # НДС не облагается
+                            "payment_mode": "full_payment",
+                            "payment_subject": "service"
+                        }
+                    ]
+                },
                 "metadata": {
                     "user_id": user_id
                 }
