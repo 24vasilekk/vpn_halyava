@@ -5,7 +5,7 @@ from services.xui_service import XUIService
 
 # Хардкод настроек сервера (пока .env не работает корректно)
 V2RAY_SERVER_IP = "81.200.157.217"
-V2RAY_PORT = "443"
+V2RAY_PORT = "2053"
 
 class VPNService:
     @staticmethod
@@ -29,21 +29,25 @@ class VPNService:
         
         # expiry_time = 0 означает без ограничений по времени
         # Управление временем происходит через базу данных бота
-        success = await xui.add_client(user_id, user_uuid, email, expiry_time=0)
+        success, real_uuid = await xui.add_client(user_id, user_uuid, email, expiry_time=0)
         
-        if not success:
+        if not success or not real_uuid:
             print(f"❌ Failed to add user {user_id} to X-UI")
             return None, None
         
-        # Формируем конфигурацию V2Ray (vmess://)
+        # Используем реальный UUID от Marzban
+        user_uuid = real_uuid
+        
+        # Формируем конфигурацию V2Ray (vmess://) - TCP как в Marzban
         config = {
             "v": "2",
             "ps": f"VPN-{'Trial' if is_trial else 'Paid'}-{user_id}",
             "add": V2RAY_SERVER_IP,
-            "port": V2RAY_PORT,
+            "port": int(V2RAY_PORT),
             "id": user_uuid,
-            "aid": "0",
-            "net": "tcp",
+            "aid": 0,
+            "scy": "auto",
+            "net": "tcp",  # TCP как в конфигурации Marzban
             "type": "none",
             "host": "",
             "path": "",

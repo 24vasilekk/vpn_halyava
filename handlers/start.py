@@ -15,19 +15,23 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db):
     if context.args:
         referrer_id = extract_referrer_id(context.args[0])
     
-    # Добавляем пользователя в базу
-    db.add_user(user_id, username, referrer_id)
+    # Проверяем, есть ли пользователь в базе
+    existing_user = db.get_user(user_id)
     
-    # Проверяем, есть ли активная подписка
-    subscription = db.get_active_subscription(user_id)
-    
-    if not subscription:
-        # Генерируем VPN ключ и UUID
+    if not existing_user:
+        # Новый пользователь - добавляем в базу
+        db.add_user(user_id, username, referrer_id)
+        print(f"✅ Новый пользователь добавлен: {user_id}")
+        
+        # Генерируем VPN ключ и UUID для trial
         vpn_key, user_uuid = await VPNService.generate_vpn_key(user_id, is_trial=True)
+        print(f"🔑 VPN ключ сгенерирован: {vpn_key[:50]}...")
+        print(f"🆔 UUID: {user_uuid}")
         
         if vpn_key and user_uuid:
             # Активируем пробный период
-            db.activate_trial(user_id, vpn_key, user_uuid)
+            success = db.activate_trial(user_id, vpn_key, user_uuid)
+            print(f"{'✅' if success else '❌'} Trial активация: {success}")
             
             # Генерируем реферальную ссылку
             bot_username = context.bot.username
@@ -53,11 +57,15 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db):
 Выберите действие:
             """
     else:
-        # Если подписка уже есть - приветствуем
+        # Существующий пользователь - проверяем подписку
+        subscription = db.get_active_subscription(user_id)
+        
         bot_username = context.bot.username
         ref_link = generate_referral_link(bot_username, user_id)
         
-        message = f"""
+        if subscription:
+            # Подписка активна
+            message = f"""
 👋 С возвращением!
 
 У вас активна подписка.
@@ -68,7 +76,23 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db):
 {ref_link}
 
 Выберите действие:
-        """
+            """
+        else:
+            # Подписка истекла
+            message = f"""
+👋 С возвращением!
+
+❌ Ваша подписка истекла.
+
+💳 Оплатите подписку, чтобы продолжить пользоваться VPN.
+
+🎁 Пригласите друга и получите 35% с его покупки!
+
+Ваша реферальная ссылка:
+{ref_link}
+
+Выберите действие:
+            """
     
     await update.message.reply_text(
         message,

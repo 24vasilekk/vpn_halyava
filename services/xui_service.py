@@ -36,12 +36,12 @@ class XUIService:
             return None
     
     async def add_client(self, user_id, uuid, email, expiry_time=0):
-        """Добавляет пользователя в Marzban"""
+        """Добавляет пользователя в Marzban и возвращает реальный UUID"""
         try:
             token = await self.login()
             if not token:
                 print("❌ Failed to login to Marzban")
-                return False
+                return False, None
             
             user_data = {
                 "username": email,
@@ -70,16 +70,41 @@ class XUIService:
                     print(f"🔍 DEBUG: status = {resp.status}")
                     if resp.status == 200:
                         result = await resp.json()
+                        # Получаем реальный UUID из ответа Marzban
+                        real_uuid = result.get('proxies', {}).get('vmess', {}).get('id', uuid)
                         print(f"✅ User {email} added to Marzban")
-                        return True
+                        print(f"🔑 Real UUID from Marzban: {real_uuid}")
+                        return True, real_uuid
+                    elif resp.status == 409:
+                        # Пользователь уже существует - удаляем и создаем заново
+                        print(f"⚠️ User {email} already exists, deleting and recreating...")
+                        await self.delete_client(user_id, uuid)
+                        
+                        # Пробуем создать снова
+                        async with session.post(
+                            f"{self.panel_url}/api/user",
+                            json=user_data,
+                            headers=headers,
+                            timeout=aiohttp.ClientTimeout(total=10)
+                        ) as resp2:
+                            if resp2.status == 200:
+                                result = await resp2.json()
+                                real_uuid = result.get('proxies', {}).get('vmess', {}).get('id', uuid)
+                                print(f"✅ User {email} recreated successfully")
+                                print(f"🔑 Real UUID from Marzban: {real_uuid}")
+                                return True, real_uuid
+                            else:
+                                text = await resp2.text()
+                                print(f"❌ Failed to recreate user: {text}")
+                                return False, None
                     else:
                         text = await resp.text()
                         print(f"❌ Failed to add user: {text}")
-                        return False
+                        return False, None
         
         except Exception as e:
             print(f"❌ Error adding client: {e}")
-            return False
+            return False, None
     
     async def delete_client(self, user_id, uuid):
         """Удаляет пользователя из Marzban"""

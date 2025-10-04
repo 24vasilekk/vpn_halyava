@@ -52,11 +52,17 @@ async def get_key_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, d
     
     user_id = query.from_user.id
     
+    print(f"🔍 Получение ключа для пользователя: {user_id}")
+    
     # Проверяем активную подписку
     subscription = db.get_active_subscription(user_id)
     
+    print(f"🔍 Подписка из БД: {subscription}")
+    
     if subscription:
         vpn_key = subscription[2]  # vpn_key из таблицы subscriptions
+        
+        print(f"✅ Ключ найден: {vpn_key[:50]}...")
         
         await query.edit_message_text(
             f"🔑 Ваш VPN ключ:\n\n`{vpn_key}`\n\nСкопируйте ключ и вставьте его в приложение V2RayTun.",
@@ -64,6 +70,8 @@ async def get_key_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, d
             reply_markup=get_main_keyboard()
         )
     else:
+        print(f"❌ Подписка не найдена для пользователя {user_id}")
+        
         await query.edit_message_text(
             "❌ У вас нет активной подписки. Пожалуйста, оплатите подписку.",
             reply_markup=get_main_keyboard()
