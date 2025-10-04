@@ -2,6 +2,8 @@ import aiohttp
 import json
 from config import XUI_PANEL_URL, XUI_USERNAME, XUI_PASSWORD
 
+print(f"🔍 XUI Service loaded. Panel URL: {XUI_PANEL_URL}")
+
 class XUIService:
     def __init__(self):
         self.panel_url = XUI_PANEL_URL
@@ -35,12 +37,15 @@ class XUIService:
     
     async def get_inbounds(self, cookies):
         """Получает список всех inbounds"""
+        url = f"{self.panel_url}/xui/inbound/list"
+        print(f"🔍 DEBUG get_inbounds: Формируемый URL = {url}")
         try:
             async with aiohttp.ClientSession(cookies=cookies) as session:
                 async with session.post(
-                    f"{self.panel_url}/panel/inbound/list",
+                    url,
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as resp:
+                    print(f"🔍 DEBUG: Response status = {resp.status}, Real URL = {resp.url}")
                     if resp.status == 200:
                         result = await resp.json()
                         if result.get('success'):
@@ -105,7 +110,7 @@ class XUIService:
             # Отправляем запрос на добавление клиента
             async with aiohttp.ClientSession(cookies=cookies) as session:
                 async with session.post(
-                    f"{self.panel_url}/panel/inbound/addClient",
+                    f"{self.panel_url}/xui/inbound/addClient",
                     json=data,
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as resp:
@@ -161,7 +166,7 @@ class XUIService:
             # Отправляем запрос на удаление
             async with aiohttp.ClientSession(cookies=cookies) as session:
                 async with session.post(
-                    f"{self.panel_url}/panel/inbound/delClient/{uuid}",
+                    f"{self.panel_url}/xui/inbound/delClient/{uuid}",
                     json=data,
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as resp:
@@ -197,7 +202,7 @@ class XUIService:
             
             async with aiohttp.ClientSession(cookies=cookies) as session:
                 async with session.get(
-                    f"{self.panel_url}/panel/inbound/clientStat/{email}",
+                    f"{self.panel_url}/xui/inbound/clientStat/{email}",
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as resp:
                     if resp.status == 200:

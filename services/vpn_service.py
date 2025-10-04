@@ -1,8 +1,11 @@
 import uuid
 import base64
 import json
-from config import V2RAY_SERVER_IP, V2RAY_PORT
 from services.xui_service import XUIService
+
+# Хардкод настроек сервера (пока .env не работает корректно)
+V2RAY_SERVER_IP = "81.200.157.217"
+V2RAY_PORT = "443"
 
 class VPNService:
     @staticmethod
@@ -53,6 +56,7 @@ class VPNService:
         vmess_link = f"vmess://{encoded_config}"
         
         print(f"✅ VPN key generated for user {user_id} (UUID: {user_uuid})")
+        print(f"🔍 Server IP: {V2RAY_SERVER_IP}, Port: {V2RAY_PORT}")
         
         return vmess_link, user_uuid
     

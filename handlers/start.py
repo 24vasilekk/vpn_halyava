@@ -22,7 +22,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db):
     subscription = db.get_active_subscription(user_id)
     
     if not subscription:
-        # Генерируем VPN ключ и UUID (с await, так как функция async)
+        # Генерируем VPN ключ и UUID
         vpn_key, user_uuid = await VPNService.generate_vpn_key(user_id, is_trial=True)
         
         if vpn_key and user_uuid:
@@ -53,8 +53,19 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db):
 Выберите действие:
             """
     else:
-        message = """
+        # Если подписка уже есть - приветствуем
+        bot_username = context.bot.username
+        ref_link = generate_referral_link(bot_username, user_id)
+        
+        message = f"""
 👋 С возвращением!
+
+У вас активна подписка.
+
+🎁 Пригласите друга и получите 35% с его покупки!
+
+Ваша реферальная ссылка:
+{ref_link}
 
 Выберите действие:
         """
