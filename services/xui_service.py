@@ -7,11 +7,9 @@ class XUIService:
         self.panel_url = XUI_PANEL_URL
         self.username = XUI_USERNAME
         self.password = XUI_PASSWORD
-        self.session = None
-        self.cookie = None
     
     async def login(self):
-        """Авторизация в панели X-UI"""
+        """Авторизация в панели 3X-UI"""
         try:
             async with aiohttp.ClientSession() as session:
                 login_data = {
@@ -26,37 +24,37 @@ class XUIService:
                     if resp.status == 200:
                         result = await resp.json()
                         if result.get('success'):
-                            # Сохраняем cookies для последующих запросов
                             cookies = resp.cookies
+                            print("✅ Successfully logged into 3X-UI")
                             return cookies
+                    print(f"❌ Login failed: status {resp.status}")
             return None
         except Exception as e:
-            print(f"Error logging into X-UI: {e}")
+            print(f"❌ Error logging into 3X-UI: {e}")
             return None
     
-    async def get_inbound_id(self, cookies):
-        """Получает ID первого inbound для добавления клиентов"""
+    async def get_inbounds(self, cookies):
+        """Получает список всех inbounds"""
         try:
             async with aiohttp.ClientSession(cookies=cookies) as session:
                 async with session.post(
-                    f"{self.panel_url}/panel/api/inbounds/list",
+                    f"{self.panel_url}/panel/inbound/list",
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as resp:
                     if resp.status == 200:
                         result = await resp.json()
-                        if result.get('success') and result.get('obj'):
-                            # Берем первый inbound
-                            inbounds = result['obj']
-                            if inbounds and len(inbounds) > 0:
-                                return inbounds[0]['id']
+                        if result.get('success'):
+                            inbounds = result.get('obj', [])
+                            print(f"✅ Found {len(inbounds)} inbounds")
+                            return inbounds
             return None
         except Exception as e:
-            print(f"Error getting inbound ID: {e}")
+            print(f"❌ Error getting inbounds: {e}")
             return None
     
     async def add_client(self, user_id, uuid, email, expiry_time=0):
         """
-        Добавляет клиента в X-UI панель
+        Добавляет клиента в 3X-UI панель
         
         Args:
             user_id: ID пользователя Telegram
@@ -71,55 +69,65 @@ class XUIService:
             # Авторизуемся
             cookies = await self.login()
             if not cookies:
-                print("Failed to login to X-UI")
+                print("❌ Failed to login to 3X-UI")
                 return False
             
-            # Получаем ID inbound
-            inbound_id = await self.get_inbound_id(cookies)
-            if not inbound_id:
-                print("Failed to get inbound ID")
+            # Получаем список inbounds чтобы найти ID
+            inbounds = await self.get_inbounds(cookies)
+            if not inbounds or len(inbounds) == 0:
+                print("❌ No inbounds found. Create one in 3X-UI panel first!")
                 return False
             
-            # Формируем данные клиента
-            client_data = {
+            # Берем первый inbound
+            inbound_id = inbounds[0]['id']
+            print(f"✅ Using inbound ID: {inbound_id}")
+            
+            # Формируем данные клиента для 3X-UI
+            settings = {
+                "clients": [{
+                    "id": uuid,
+                    "alterId": 0,
+                    "email": email,
+                    "limitIp": 3,  # Лимит устройств (3 устройства)
+                    "totalGB": 0,  # 0 = безлимит трафика
+                    "expiryTime": expiry_time,  # 0 = без ограничения по времени
+                    "enable": True,
+                    "tgId": str(user_id),
+                    "subId": ""
+                }]
+            }
+            
+            data = {
                 "id": inbound_id,
-                "settings": json.dumps({
-                    "clients": [{
-                        "id": uuid,
-                        "email": email,
-                        "totalGB": 0,  # 0 = без ограничений
-                        "expiryTime": expiry_time,
-                        "enable": True,
-                        "tgId": str(user_id),
-                        "subId": ""
-                    }]
-                })
+                "settings": json.dumps(settings)
             }
             
             # Отправляем запрос на добавление клиента
             async with aiohttp.ClientSession(cookies=cookies) as session:
                 async with session.post(
-                    f"{self.panel_url}/panel/api/inbounds/addClient",
-                    json=client_data,
+                    f"{self.panel_url}/panel/inbound/addClient",
+                    json=data,
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as resp:
                     if resp.status == 200:
                         result = await resp.json()
                         if result.get('success'):
-                            print(f"✅ Client {email} added successfully to X-UI")
+                            print(f"✅ Client {email} (UUID: {uuid}) added successfully to 3X-UI")
                             return True
                         else:
                             print(f"❌ Failed to add client: {result.get('msg')}")
                             return False
+                    else:
+                        print(f"❌ HTTP error {resp.status}")
+                        return False
             
-            return False
         except Exception as e:
-            print(f"Error adding client to X-UI: {e}")
+            print(f"❌ Error adding client to 3X-UI: {e}")
             return False
     
     async def delete_client(self, user_id, uuid):
         """
-        Удаляет клиента из X-UI панели
+        Удаляет клиента из 3X-UI панели
         
         Args:
             user_id: ID пользователя Telegram
@@ -132,15 +140,20 @@ class XUIService:
             # Авторизуемся
             cookies = await self.login()
             if not cookies:
+                print("❌ Failed to login to 3X-UI")
                 return False
             
-            # Получаем ID inbound
-            inbound_id = await self.get_inbound_id(cookies)
-            if not inbound_id:
+            # Получаем список inbounds
+            inbounds = await self.get_inbounds(cookies)
+            if not inbounds or len(inbounds) == 0:
+                print("❌ No inbounds found")
                 return False
+            
+            # Берем первый inbound
+            inbound_id = inbounds[0]['id']
             
             # Формируем данные для удаления
-            delete_data = {
+            data = {
                 "id": inbound_id,
                 "uuid": uuid
             }
@@ -148,19 +161,23 @@ class XUIService:
             # Отправляем запрос на удаление
             async with aiohttp.ClientSession(cookies=cookies) as session:
                 async with session.post(
-                    f"{self.panel_url}/panel/api/inbounds/delClient/{uuid}",
-                    json=delete_data,
+                    f"{self.panel_url}/panel/inbound/delClient/{uuid}",
+                    json=data,
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as resp:
                     if resp.status == 200:
                         result = await resp.json()
                         if result.get('success'):
-                            print(f"✅ Client {uuid} deleted successfully from X-UI")
+                            print(f"✅ Client {uuid} deleted successfully from 3X-UI")
                             return True
+                        else:
+                            print(f"❌ Failed to delete: {result.get('msg')}")
+                    else:
+                        print(f"❌ HTTP error {resp.status}")
             
             return False
         except Exception as e:
-            print(f"Error deleting client from X-UI: {e}")
+            print(f"❌ Error deleting client from 3X-UI: {e}")
             return False
     
     async def get_client_traffic(self, email):
@@ -180,7 +197,7 @@ class XUIService:
             
             async with aiohttp.ClientSession(cookies=cookies) as session:
                 async with session.get(
-                    f"{self.panel_url}/panel/api/inbounds/getClientTraffics/{email}",
+                    f"{self.panel_url}/panel/inbound/clientStat/{email}",
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as resp:
                     if resp.status == 200:
@@ -190,5 +207,5 @@ class XUIService:
             
             return None
         except Exception as e:
-            print(f"Error getting client traffic: {e}")
+            print(f"❌ Error getting client traffic: {e}")
             return None
