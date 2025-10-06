@@ -48,12 +48,12 @@ class VPNService:
             public_key = subprocess.run(['wg', 'pubkey'], input=private_key, capture_output=True, text=True).stdout.strip()
             preshared_key = subprocess.run(['wg', 'genpsk'], capture_output=True, text=True).stdout.strip()
             
-            # Добавляем peer в WireGuard
+            # Добавляем peer в WireGuard (ТОЛЬКО IPv4)
             subprocess.run([
                 'wg', 'set', WG_INTERFACE,
                 'peer', public_key,
                 'preshared-key', '/dev/stdin',
-                'allowed-ips', f'10.66.66.{next_ip}/32,fd42:42:42::{next_ip}/128'
+                'allowed-ips', f'10.66.66.{next_ip}/32'  # УБРАЛИ IPv6
             ], input=preshared_key, text=True, check=True)
             
             # Сохраняем конфигурацию WireGuard
@@ -62,14 +62,15 @@ class VPNService:
             # Создаем конфиг файл для клиента
             config_text = f"""[Interface]
 PrivateKey = {private_key}
-Address = 10.66.66.{next_ip}/32,fd42:42:42::{next_ip}/128
-DNS = 8.8.8.8,1.0.0.1
+Address = 10.66.66.{next_ip}/32
+DNS = 1.1.1.1, 1.0.0.1
+PostUp = ip -6 route add blackhole default metric 1
 
 [Peer]
 PublicKey = {SERVER_PUBLIC_KEY}
 PresharedKey = {preshared_key}
 Endpoint = {SERVER_ENDPOINT}
-AllowedIPs = 0.0.0.0/0,::/0
+AllowedIPs = 0.0.0.0/0
 PersistentKeepalive = 25
 """
             
