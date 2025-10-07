@@ -22,6 +22,13 @@ from handlers.payment import (
     pay_yookassa_callback, 
     check_payment_command
 )
+from handlers.vpn_setup import (
+    setup_vpn_callback, 
+    device_selection_callback, 
+    install_app_callback, 
+    get_key_callback,
+    recreate_config_callback  # ← ДОБАВИТЬ
+)
 from handlers.stars_payment import (
     stars_payment_callback, 
     precheckout_callback, 
@@ -107,6 +114,11 @@ def main():
         CallbackQueryHandler(lambda u, c: get_key_callback(u, c, db), pattern='^get_key$')
     )
     
+    # Кнопка "Обновить конфиг"
+    application.add_handler(
+        CallbackQueryHandler(lambda u, c: recreate_config_callback(u, c, db), pattern='^recreate_config$')
+    )
+
     logger.info("Обработчики VPN настройки добавлены")
     
     # ========================================

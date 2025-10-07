@@ -26,6 +26,7 @@ def get_device_options_keyboard():
     keyboard = [
         [InlineKeyboardButton("📥 Установить приложение WireGuard", callback_data='install_app')],
         [InlineKeyboardButton("🔑 Получить конфиг", callback_data='get_key')],
+        [InlineKeyboardButton("🔄 Обновить конфиг (Fix TikTok)", callback_data='recreate_config')],  # НОВАЯ
         [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
     ]
     return InlineKeyboardMarkup(keyboard)

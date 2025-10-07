@@ -89,3 +89,58 @@ async def get_key_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, d
             "❌ У вас нет активной подписки.",
             reply_markup=get_main_keyboard()
         )
+# В конце файла, после get_key_callback
+
+async def recreate_config_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, db):
+    """НОВАЯ: Пересоздать конфиг для пользователя"""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    subscription = db.get_active_subscription(user_id)
+    
+    if not subscription:
+        await query.edit_message_text(
+            "❌ У вас нет активной подписки.",
+            reply_markup=get_main_keyboard()
+        )
+        return
+    
+    # Удалить старый конфиг и peer
+    old_uuid = subscription[3]
+    old_config_path = f"/root/wg0-client-{old_uuid}.conf"
+    
+    try:
+        # Удалить файл
+        if os.path.exists(old_config_path):
+            os.remove(old_config_path)
+        
+        # Пересоздать с новыми настройками
+        is_trial = subscription[6]
+        vpn_key, user_uuid = await VPNService.generate_vpn_key(user_id, is_trial=is_trial)
+        
+        if vpn_key and user_uuid:
+            # Обновить в БД
+            db.cursor.execute('''
+                UPDATE subscriptions 
+                SET vpn_key = ?, user_uuid = ?
+                WHERE user_id = ? AND is_active = 1
+            ''', (vpn_key, user_uuid, user_id))
+            db.connection.commit()
+            
+            await query.edit_message_text(
+                "✅ Конфиг пересоздан с исправлениями!\n\n"
+                "📥 Удалите старый конфиг из WireGuard и импортируйте новый.",
+                reply_markup=get_device_options_keyboard()
+            )
+        else:
+            await query.edit_message_text(
+                "❌ Ошибка пересоздания конфига.",
+                reply_markup=get_main_keyboard()
+            )
+    except Exception as e:
+        print(f"Error recreating config: {e}")
+        await query.edit_message_text(
+            f"❌ Ошибка: {str(e)}",
+            reply_markup=get_main_keyboard()
+        )
