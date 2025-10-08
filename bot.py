@@ -118,11 +118,6 @@ def main():
     application.add_handler(
         CallbackQueryHandler(lambda u, c: get_key_callback(u, c, db), pattern='^get_key$')
     )
-    
-    # Кнопка "Обновить конфиг"
-    application.add_handler(
-        CallbackQueryHandler(lambda u, c: recreate_config_callback(u, c, db), pattern='^recreate_config$')
-    )
 
     logger.info("Обработчики VPN настройки добавлены")
     
