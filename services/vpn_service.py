@@ -51,8 +51,7 @@ class VPNService:
     @staticmethod
     async def _generate_wireguard_key(user_id, server, is_trial):
         """Генерирует WireGuard конфиг для выбранного сервера"""
-        client_name = f"user_{user_id}_s{server}"
-        config_path = f"{CLIENT_CONFIG_DIR}/wg0-client-{client_name}.conf"
+        import paramiko
         
         # Настройки сервера
         if server == 1:
@@ -60,31 +59,42 @@ class VPNService:
             server_public_key = SERVER_1_WG_PUBLIC_KEY
             server_endpoint = SERVER_1_WG_ENDPOINT
             ip_range = "10.66.66"
+            ssh_host = SERVER_1_IP
         else:  # server == 2
             server_ip = SERVER_2_IP
             server_public_key = SERVER_2_WG_PUBLIC_KEY
             server_endpoint = SERVER_2_WG_ENDPOINT
             ip_range = "10.77.77"
+            ssh_host = SERVER_2_IP
         
-        # Проверяем существующий конфиг
-        if os.path.exists(config_path):
-            with open(config_path, 'r') as f:
-                config_text = f.read()
-            return config_text, client_name
+        client_name = f"user_{user_id}_s{server}"
         
         try:
-            # Получаем занятые IP адреса
-            result = subprocess.run(
-                ['wg', 'show', WG_INTERFACE, 'allowed-ips'],
-                capture_output=True,
-                text=True
-            )
+            # Подключаемся к серверу по SSH
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             
-            # Находим следующий свободный IP
+            # Используем SSH ключ для подключения
+            ssh.connect(ssh_host, username='root', key_filename='/root/.ssh/id_rsa')
+            
+            # Проверяем существующий конфиг
+            config_path = f"/root/wg0-client-{client_name}.conf"
+            stdin, stdout, stderr = ssh.exec_command(f'test -f {config_path} && cat {config_path}')
+            existing_config = stdout.read().decode('utf-8')
+            
+            if existing_config:
+                ssh.close()
+                return existing_config, client_name
+            
+            # Получаем занятые IP
+            stdin, stdout, stderr = ssh.exec_command('wg show wg0 allowed-ips')
+            result = stdout.read().decode('utf-8')
+            
+            # Находим свободный IP
             used_ips = []
-            for line in result.stdout.strip().split('\n'):
-                if line and ip_range in line:
-                    import re
+            import re
+            for line in result.strip().split('\n'):
+                if ip_range in line:
                     match = re.search(rf'{ip_range}\.(\d+)', line)
                     if match:
                         used_ips.append(int(match.group(1)))
@@ -93,52 +103,55 @@ class VPNService:
             while next_ip in used_ips:
                 next_ip += 1
             
-            print(f"Создаю клиента с IP {ip_range}.{next_ip}")
+            print(f"Создаю клиента с IP {ip_range}.{next_ip} на сервере {server}")
             
             # Генерируем ключи
-            private_key = subprocess.run(['wg', 'genkey'], capture_output=True, text=True).stdout.strip()
-            public_key = subprocess.run(['wg', 'pubkey'], input=private_key, capture_output=True, text=True).stdout.strip()
-            preshared_key = subprocess.run(['wg', 'genpsk'], capture_output=True, text=True).stdout.strip()
+            stdin, stdout, stderr = ssh.exec_command('wg genkey')
+            private_key = stdout.read().decode('utf-8').strip()
             
-            # Добавляем peer в WireGuard
-            subprocess.run([
-                'wg', 'set', WG_INTERFACE,
-                'peer', public_key,
-                'preshared-key', '/dev/stdin',
-                'allowed-ips', f'{ip_range}.{next_ip}/32'
-            ], input=preshared_key, text=True, check=True)
+            stdin, stdout, stderr = ssh.exec_command(f'echo {private_key} | wg pubkey')
+            public_key = stdout.read().decode('utf-8').strip()
             
-            # Сохраняем конфигурацию WireGuard
-            subprocess.run(['wg-quick', 'save', WG_INTERFACE], check=True)
+            stdin, stdout, stderr = ssh.exec_command('wg genpsk')
+            preshared_key = stdout.read().decode('utf-8').strip()
             
-            # Создаем конфиг файл для клиента
+            # Добавляем peer
+            add_peer_cmd = f'''
+    echo {preshared_key} | wg set wg0 peer {public_key} preshared-key /dev/stdin allowed-ips {ip_range}.{next_ip}/32
+    wg-quick save wg0
+    '''
+            stdin, stdout, stderr = ssh.exec_command(add_peer_cmd)
+            error = stderr.read().decode('utf-8')
+            if error:
+                print(f"Error adding peer: {error}")
+            
+            # Создаем конфиг
             config_text = f"""[Interface]
-PrivateKey = {private_key}
-Address = {ip_range}.{next_ip}/32
-DNS = 1.1.1.1, 1.0.0.1
-PostUp = ip -6 route add blackhole default metric 1
+    PrivateKey = {private_key}
+    Address = {ip_range}.{next_ip}/32
+    DNS = 1.1.1.1, 1.0.0.1
 
-[Peer]
-PublicKey = {server_public_key}
-PresharedKey = {preshared_key}
-Endpoint = {server_endpoint}
-AllowedIPs = 0.0.0.0/0
-PersistentKeepalive = 25
-"""
+    [Peer]
+    PublicKey = {server_public_key}
+    PresharedKey = {preshared_key}
+    Endpoint = {server_endpoint}
+    AllowedIPs = 0.0.0.0/0
+    PersistentKeepalive = 25
+    """
             
-            # Сохраняем конфиг в файл
-            with open(config_path, 'w') as f:
-                f.write(config_text)
+            # Сохраняем конфиг на сервере
+            save_cmd = f"cat > {config_path} << 'EOF'\n{config_text}\nEOF"
+            ssh.exec_command(save_cmd)
+            
+            ssh.close()
             
             print(f"✅ Client {client_name} created with IP {ip_range}.{next_ip}")
-            
             return config_text, client_name
             
-        except subprocess.CalledProcessError as e:
-            print(f"❌ Error creating peer: {e}")
-            return None, None
         except Exception as e:
-            print(f"❌ Unexpected error: {e}")
+            print(f"❌ Error: {e}")
+            import traceback
+            traceback.print_exc()
             return None, None
     
     @staticmethod
