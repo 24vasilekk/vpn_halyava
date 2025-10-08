@@ -49,8 +49,6 @@ from handlers.admin import (
 )
 
 from handlers.server_selection import (
-    choose_server_callback,
-    select_server_callback,
     choose_protocol_callback,
     select_protocol_callback
 )
@@ -133,14 +131,6 @@ def main():
     # ========================================
     
     # Кнопка "Выбрать сервер"
-    application.add_handler(
-        CallbackQueryHandler(lambda u, c: choose_server_callback(u, c, db), pattern='^choose_server$')
-    )
-    
-    # Выбор сервера (1 или 2)
-    application.add_handler(
-        CallbackQueryHandler(lambda u, c: select_server_callback(u, c, db), pattern='^select_server_')
-    )
     
     # Кнопка "Выбрать протокол"
     application.add_handler(
@@ -153,7 +143,7 @@ def main():
     )
     
     logger.info("Обработчики выбора сервера и протокола добавлены")
-    
+
     # ========================================
     # ОБРАБОТЧИКИ CALLBACK КНОПОК - ПЛАТЕЖИ
     # ========================================
