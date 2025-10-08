@@ -64,7 +64,6 @@ class VPNService:
 PrivateKey = {private_key}
 Address = 10.66.66.{next_ip}/32
 DNS = 1.1.1.1, 1.0.0.1
-PostUp = ip -6 route add blackhole default metric 1
 
 [Peer]
 PublicKey = {SERVER_PUBLIC_KEY}

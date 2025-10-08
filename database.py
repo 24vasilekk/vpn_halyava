@@ -48,6 +48,15 @@ class Database:
                 FOREIGN KEY (user_id) REFERENCES users (user_id)
             )
         ''')
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                user_id INTEGER PRIMARY KEY,
+                selected_server INTEGER DEFAULT 1,
+                selected_protocol TEXT DEFAULT 'wireguard',
+                FOREIGN KEY (user_id) REFERENCES users (user_id)
+            )
+        ''')
         
         self.connection.commit()
     
@@ -279,5 +288,33 @@ class Database:
         
         return self.cursor.fetchall()
     
+    def get_user_preferences(self, user_id):
+        """Получает настройки сервера и протокола пользователя"""
+        self.cursor.execute('''
+            SELECT selected_server, selected_protocol 
+            FROM user_preferences 
+            WHERE user_id = ?
+        ''', (user_id,))
+        result = self.cursor.fetchone()
+        if result:
+            return result
+        else:
+            # По умолчанию: Сервер 1, WireGuard
+            self.set_user_preferences(user_id, 1, 'wireguard')
+            return (1, 'wireguard')
+    
+    def set_user_preferences(self, user_id, server=1, protocol='wireguard'):
+        """Устанавливает настройки сервера и протокола"""
+        try:
+            self.cursor.execute('''
+                INSERT OR REPLACE INTO user_preferences (user_id, selected_server, selected_protocol)
+                VALUES (?, ?, ?)
+            ''', (user_id, server, protocol))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Error setting preferences: {e}")
+            return False
+
     def close(self):
         self.connection.close()
