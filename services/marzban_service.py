@@ -48,18 +48,18 @@ class MarzbanService:
             
             if check_response.status_code == 200:
                 # Пользователь существует - получаем его данные
-                print(f"DEBUG: Пользователь существует, получаю данные")
+                print(f"DEBUG: Пользователь существует, получаю ссылки")
                 user_info = check_response.json()
                 
-                # Получаем ссылку подписки
+                # Получаем прямые ссылки VLESS/VMess из links
                 if 'links' in user_info and len(user_info['links']) > 0:
-                    subscription_url = user_info['links'][0]
-                elif 'subscription_url' in user_info:
-                    subscription_url = user_info['subscription_url']
+                    # Возвращаем все ссылки как одну строку (разделённые переносом)
+                    all_links = '\n'.join(user_info['links'])
+                    return all_links, username
                 else:
+                    # Fallback - subscription URL
                     subscription_url = f"{self.base_url}/sub/{username}"
-                
-                return subscription_url, username
+                    return subscription_url, username
             
             # Создаём нового пользователя
             user_data = {
@@ -88,20 +88,18 @@ class MarzbanService:
             )
             
             print(f"DEBUG: Status code: {response.status_code}")
-            print(f"DEBUG: Response: {response.text}")
             
             if response.status_code == 200:
                 user_info = response.json()
+                print(f"DEBUG: User created: {user_info.keys()}")
                 
-                # Получаем subscription_url из links
+                # Получаем прямые ссылки
                 if 'links' in user_info and len(user_info['links']) > 0:
-                    subscription_url = user_info['links'][0]
-                elif 'subscription_url' in user_info:
-                    subscription_url = user_info['subscription_url']
+                    all_links = '\n'.join(user_info['links'])
+                    return all_links, username
                 else:
                     subscription_url = f"{self.base_url}/sub/{username}"
-                
-                return subscription_url, username
+                    return subscription_url, username
             else:
                 print(f"Error creating user: {response.text}")
                 return None, None
