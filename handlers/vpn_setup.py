@@ -100,7 +100,6 @@ async def get_key_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, d
             f"Протокол: {protocol_name}\n\n"
             f"Ссылки подписки:\n{vpn_key}\n\n"
             f"Скопируйте и добавьте в приложение V2Ray",
-            parse_mode='Markdown'
         )
     else:
         # WireGuard - отправляем файл
