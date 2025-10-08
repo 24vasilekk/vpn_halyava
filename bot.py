@@ -48,6 +48,13 @@ from handlers.admin import (
     admin_expiring_soon_callback
 )
 
+from handlers.server_selection import (
+    choose_server_callback,
+    select_server_callback,
+    choose_protocol_callback,
+    select_protocol_callback
+)
+
 # Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -120,6 +127,32 @@ def main():
     )
 
     logger.info("Обработчики VPN настройки добавлены")
+    
+    # ========================================
+    # ОБРАБОТЧИКИ ВЫБОРА СЕРВЕРА И ПРОТОКОЛА
+    # ========================================
+    
+    # Кнопка "Выбрать сервер"
+    application.add_handler(
+        CallbackQueryHandler(lambda u, c: choose_server_callback(u, c, db), pattern='^choose_server$')
+    )
+    
+    # Выбор сервера (1 или 2)
+    application.add_handler(
+        CallbackQueryHandler(lambda u, c: select_server_callback(u, c, db), pattern='^select_server_')
+    )
+    
+    # Кнопка "Выбрать протокол"
+    application.add_handler(
+        CallbackQueryHandler(lambda u, c: choose_protocol_callback(u, c, db), pattern='^choose_protocol$')
+    )
+    
+    # Выбор протокола (wireguard или v2ray)
+    application.add_handler(
+        CallbackQueryHandler(lambda u, c: select_protocol_callback(u, c, db), pattern='^select_protocol_')
+    )
+    
+    logger.info("Обработчики выбора сервера и протокола добавлены")
     
     # ========================================
     # ОБРАБОТЧИКИ CALLBACK КНОПОК - ПЛАТЕЖИ
