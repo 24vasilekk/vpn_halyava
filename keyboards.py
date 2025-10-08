@@ -24,9 +24,10 @@ def get_device_keyboard():
 
 def get_device_options_keyboard():
     keyboard = [
-        [InlineKeyboardButton("📥 Установить приложение WireGuard", callback_data='install_app')],
+        [InlineKeyboardButton("🌐 Выбрать сервер", callback_data='choose_server')],
+        [InlineKeyboardButton("🔄 Выбрать протокол", callback_data='choose_protocol')],
+        [InlineKeyboardButton("📥 Установить приложение", callback_data='install_app')],
         [InlineKeyboardButton("🔑 Получить конфиг", callback_data='get_key')],
-        [InlineKeyboardButton("🔄 Обновить конфиг (Fix TikTok)", callback_data='recreate_config')],  # НОВАЯ
         [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -52,6 +53,24 @@ def get_admin_keyboard():
         [InlineKeyboardButton("💎 Платные пользователи", callback_data='admin_paid_users')],
         [InlineKeyboardButton("⚠️ Истекают скоро", callback_data='admin_expiring_soon')],
         [InlineKeyboardButton("💳 Последние платежи", callback_data='admin_recent_payments')],
+        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def get_server_selection_keyboard():
+    """Выбор сервера"""
+    keyboard = [
+        [InlineKeyboardButton("🎯 Сервер 1 - TikTok (DE)", callback_data='select_server_1')],
+        [InlineKeyboardButton("⚡ Сервер 2 - Скорость (NL)", callback_data='select_server_2')],
+        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def get_protocol_selection_keyboard():
+    """Выбор протокола"""
+    keyboard = [
+        [InlineKeyboardButton("🔷 WireGuard", callback_data='select_protocol_wireguard')],
+        [InlineKeyboardButton("🔶 V2Ray (только Сервер 1)", callback_data='select_protocol_v2ray')],
         [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
     ]
     return InlineKeyboardMarkup(keyboard)
