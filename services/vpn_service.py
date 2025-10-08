@@ -117,9 +117,9 @@ class VPNService:
             
             # Добавляем peer
             add_peer_cmd = f'''
-    echo {preshared_key} | wg set wg0 peer {public_key} preshared-key /dev/stdin allowed-ips {ip_range}.{next_ip}/32
-    wg-quick save wg0
-    '''
+echo {preshared_key} | wg set wg0 peer {public_key} preshared-key /dev/stdin allowed-ips {ip_range}.{next_ip}/32
+wg-quick save wg0
+'''
             stdin, stdout, stderr = ssh.exec_command(add_peer_cmd)
             error = stderr.read().decode('utf-8')
             if error:
@@ -127,17 +127,17 @@ class VPNService:
             
             # Создаем конфиг
             config_text = f"""[Interface]
-    PrivateKey = {private_key}
-    Address = {ip_range}.{next_ip}/32
-    DNS = 1.1.1.1, 1.0.0.1
+PrivateKey = {private_key}
+Address = {ip_range}.{next_ip}/32
+DNS = 1.1.1.1, 1.0.0.1
 
-    [Peer]
-    PublicKey = {server_public_key}
-    PresharedKey = {preshared_key}
-    Endpoint = {server_endpoint}
-    AllowedIPs = 0.0.0.0/0
-    PersistentKeepalive = 25
-    """
+[Peer]
+PublicKey = {server_public_key}
+PresharedKey = {preshared_key}
+Endpoint = {server_endpoint}
+AllowedIPs = 0.0.0.0/0
+PersistentKeepalive = 25
+"""
             
             # Сохраняем конфиг на сервере
             save_cmd = f"cat > {config_path} << 'EOF'\n{config_text}\nEOF"
