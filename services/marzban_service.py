@@ -32,22 +32,33 @@ class MarzbanService:
         """Создать пользователя V2Ray в Marzban"""
         try:
             token = self._get_token()
-            headers = {"Authorization": f"Bearer {token}"}
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            }
             
             username = f"user_{user_id}"
             expire_timestamp = int((datetime.now() + timedelta(days=duration_days)).timestamp())
             
-            # Создаём пользователя
+            # Создаём пользователя (обновлённый формат)
             user_data = {
                 "username": username,
                 "proxies": {
-                    "vless": {},
+                    "vless": {
+                        "flow": ""
+                    },
                     "vmess": {}
                 },
                 "data_limit": 0,  # Безлимит
                 "expire": expire_timestamp,
-                "status": "active"
+                "status": "active",
+                "inbounds": {
+                    "vless": ["VLESS TCP"],
+                    "vmess": ["VMess TCP"]
+                }
             }
+            
+            print(f"DEBUG: Отправляю запрос: {user_data}")
             
             response = requests.post(
                 f"{self.base_url}/api/user",
@@ -55,9 +66,21 @@ class MarzbanService:
                 json=user_data
             )
             
+            print(f"DEBUG: Status code: {response.status_code}")
+            print(f"DEBUG: Response: {response.text}")
+            
             if response.status_code == 200:
                 user_info = response.json()
-                subscription_url = f"{self.base_url}/sub/{user_info['subscription_token']}"
+                print(f"DEBUG: User info: {user_info}")
+                
+                # Получаем subscription_url из links
+                if 'links' in user_info and len(user_info['links']) > 0:
+                    subscription_url = user_info['links'][0]
+                elif 'subscription_url' in user_info:
+                    subscription_url = user_info['subscription_url']
+                else:
+                    subscription_url = f"{self.base_url}/sub/{username}"
+                
                 return subscription_url, username
             else:
                 print(f"Error creating user: {response.text}")
@@ -65,4 +88,6 @@ class MarzbanService:
                 
         except Exception as e:
             print(f"Error in create_user: {e}")
+            import traceback
+            traceback.print_exc()
             return None, None
