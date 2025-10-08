@@ -46,63 +46,74 @@ class MarzbanService:
                 headers=headers
             )
             
+            subscription_token = None
+            
             if check_response.status_code == 200:
-                # Пользователь существует - получаем его данные
-                print(f"DEBUG: Пользователь существует, получаю ссылки")
+                # Пользователь существует
+                print(f"DEBUG: Пользователь существует")
                 user_info = check_response.json()
+                subscription_token = user_info.get('subscription_url', '').split('/')[-1]
                 
-                # Получаем прямые ссылки VLESS/VMess из links
-                if 'links' in user_info and len(user_info['links']) > 0:
-                    # Возвращаем все ссылки как одну строку (разделённые переносом)
-                    all_links = '\n'.join(user_info['links'])
-                    return all_links, username
-                else:
-                    # Fallback - subscription URL
-                    subscription_url = f"{self.base_url}/sub/{username}"
-                    return subscription_url, username
-            
-            # Создаём нового пользователя
-            user_data = {
-                "username": username,
-                "proxies": {
-                    "vless": {
-                        "flow": ""
-                    },
-                    "vmess": {}
-                },
-                "data_limit": 0,
-                "expire": expire_timestamp,
-                "status": "active",
-                "inbounds": {
-                    "vless": ["VLESS TCP"],
-                    "vmess": ["VMess TCP"]
-                }
-            }
-            
-            print(f"DEBUG: Создаю нового пользователя")
-            
-            response = requests.post(
-                f"{self.base_url}/api/user",
-                headers=headers,
-                json=user_data
-            )
-            
-            print(f"DEBUG: Status code: {response.status_code}")
-            
-            if response.status_code == 200:
-                user_info = response.json()
-                print(f"DEBUG: User created: {user_info.keys()}")
-                
-                # Получаем прямые ссылки
-                if 'links' in user_info and len(user_info['links']) > 0:
-                    all_links = '\n'.join(user_info['links'])
-                    return all_links, username
-                else:
-                    subscription_url = f"{self.base_url}/sub/{username}"
-                    return subscription_url, username
+                if not subscription_token:
+                    subscription_token = username
             else:
-                print(f"Error creating user: {response.text}")
-                return None, None
+                # Создаём нового пользователя
+                user_data = {
+                    "username": username,
+                    "proxies": {
+                        "vless": {
+                            "flow": ""
+                        },
+                        "vmess": {}
+                    },
+                    "data_limit": 0,
+                    "expire": expire_timestamp,
+                    "status": "active",
+                    "inbounds": {
+                        "vless": ["VLESS TCP"],
+                        "vmess": ["VMess TCP"]
+                    }
+                }
+                
+                print(f"DEBUG: Создаю нового пользователя")
+                
+                response = requests.post(
+                    f"{self.base_url}/api/user",
+                    headers=headers,
+                    json=user_data
+                )
+                
+                if response.status_code != 200:
+                    print(f"Error creating user: {response.text}")
+                    return None, None
+                
+                user_info = response.json()
+                subscription_token = user_info.get('subscription_url', '').split('/')[-1]
+                
+                if not subscription_token:
+                    subscription_token = username
+            
+            # Получаем конфиги из subscription endpoint
+            import base64
+            sub_response = requests.get(f"{self.base_url}/sub/{subscription_token}")
+            
+            if sub_response.status_code == 200:
+                # Декодируем base64
+                try:
+                    decoded = base64.b64decode(sub_response.text).decode('utf-8')
+                    # Каждая строка - это отдельный конфиг
+                    configs = [line.strip() for line in decoded.split('\n') if line.strip()]
+                    
+                    if configs:
+                        # Возвращаем все конфиги
+                        all_configs = '\n\n'.join(configs)
+                        return all_configs, username
+                except Exception as e:
+                    print(f"DEBUG: Ошибка декодирования: {e}")
+            
+            # Fallback - просто subscription URL
+            subscription_url = f"{self.base_url}/sub/{subscription_token}"
+            return subscription_url, username
                 
         except Exception as e:
             print(f"Error in create_user: {e}")
