@@ -68,8 +68,11 @@ async def check_payment_command(update: Update, context: ContextTypes.DEFAULT_TY
         is_paid = YooKassaService.check_payment(payment_id)
         
         if is_paid:
-            # Генерируем новый ключ (async функция!)
-            vpn_key, user_uuid = await VPNService.generate_vpn_key(user_id, is_trial=False)
+            # Получаем настройки пользователя
+            server, protocol = db.get_user_preferences(user_id)
+            
+            # Генерируем новый ключ с учётом выбора
+            vpn_key, user_uuid = await VPNService.generate_vpn_key(user_id, server, protocol, is_trial=False)
             
             if vpn_key and user_uuid:
                 # Активируем подписку
@@ -88,9 +91,14 @@ async def check_payment_command(update: Update, context: ContextTypes.DEFAULT_TY
                 # Очищаем pending payment
                 context.user_data.pop('pending_payment_id', None)
                 
+                protocol_name = "V2Ray" if protocol == 'v2ray' else "WireGuard"
+                server_name = "🎯 TikTok (RU)" if server == 1 else "⚡ Скорость (NL)"
+                
                 await update.message.reply_text(
                     f"✅ Платеж успешно обработан!\n\n"
                     f"🎉 Подписка активирована на {SUBSCRIPTION_DURATION_DAYS} дней!\n\n"
+                    f"Сервер: {server_name}\n"
+                    f"Протокол: {protocol_name}\n\n"
                     f"Используйте кнопку 'Настроить VPN' для получения ключа.",
                     reply_markup=get_main_keyboard()
                 )
