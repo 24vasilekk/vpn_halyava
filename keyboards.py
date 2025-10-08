@@ -25,7 +25,6 @@ def get_device_keyboard():
 def get_device_options_keyboard():
     keyboard = [
         [InlineKeyboardButton("🔄 Выбрать протокол", callback_data='choose_protocol')],
-        [InlineKeyboardButton("📥 Установить приложение", callback_data='install_app')],
         [InlineKeyboardButton("🔑 Получить конфиг", callback_data='get_key')],
         [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
     ]
@@ -33,8 +32,8 @@ def get_device_options_keyboard():
 
 def get_payment_keyboard():
     keyboard = [
-        [InlineKeyboardButton("💳 149₽/месяц (Банковская карта)", callback_data='pay_yookassa')],
-        [InlineKeyboardButton("⭐ 159 Stars/месяц", callback_data='pay_stars')],
+        [InlineKeyboardButton("💳 169₽/месяц (Банковская карта)", callback_data='pay_yookassa')],
+        [InlineKeyboardButton("⭐ 169 Stars/месяц", callback_data='pay_stars')],
         [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
     ]
     return InlineKeyboardMarkup(keyboard)

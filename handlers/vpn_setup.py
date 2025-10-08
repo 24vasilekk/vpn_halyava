@@ -94,26 +94,26 @@ async def get_key_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, d
     protocol_name = "V2Ray" if protocol == 'v2ray' else "WireGuard"
     
     if protocol == 'v2ray':
-        # V2Ray - отправляем ссылки
-        # Разделяем ссылки (если их несколько)
+        # V2Ray
         links = vpn_key.strip().split('\n\n')
         
         message = "Ваша подписка V2Ray\n\n"
         message += f"Протокол: {protocol_name}\n\n"
+        message += "Приложение: v2raytun\n\n"
         message += "Ссылки подписки:\n\n"
         
         for link in links:
             if link.strip():
                 message += f"`{link.strip()}`\n\n"
         
-        message += "Нажмите на ссылку чтобы скопировать, затем добавьте в приложение V2Ray"
+        message += "Нажмите на ссылку чтобы скопировать, затем добавьте в приложение v2raytun"
         
         await query.message.reply_text(
             message,
             parse_mode='Markdown'
         )
     else:
-        # WireGuard - отправляем файл
+        # WireGuard
         config_filename = f"wireguard_user_{user_id}.conf"
         
         with open(f"/tmp/{config_filename}", "w") as f:
@@ -126,8 +126,9 @@ async def get_key_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, d
                     document=f,
                     filename=config_filename,
                     caption=f"Ваш конфиг WireGuard\n\n"
-                           f"Протокол: {protocol_name}\n\n"
-                           f"Импортируйте этот файл в WireGuard"
+                        f"Протокол: {protocol_name}\n\n"
+                        f"Приложение: WireGuard\n\n"
+                        f"Импортируйте этот файл в приложение WireGuard"
                 )
             
             os.remove(f"/tmp/{config_filename}")

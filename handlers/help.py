@@ -8,7 +8,7 @@ async def help_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     
     await query.edit_message_text(
-        f"❓ Нужна помощь?\n\nПерейдите по ссылке для подробной инструкции:\n{TELEGRAPH_HELP_LINK}",
+        "Нужна помощь?\n\nСвяжитесь с поддержкой: @plazamanager",
         reply_markup=get_back_to_menu_keyboard()
     )
 
