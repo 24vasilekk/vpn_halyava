@@ -47,23 +47,16 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
     payment_info = update.message.successful_payment
     payload = payment_info.invoice_payload
     
-    print(f"DEBUG: Обрабатываю платеж. User: {user_id}, Payload: {payload}")
-    
-    # Проверяем платеж в базе
     payment = db.get_payment(payload)
-    print(f"DEBUG: Payment из БД: {payment}")
     
     if payment and payment[5] == 'pending':
         # Получаем настройки пользователя
-        server, protocol = db.get_user_preferences(user_id)
+        _, protocol = db.get_user_preferences(user_id)
         
-        # Проверяем есть ли уже подписка
         existing_sub = db.get_active_subscription(user_id)
-        print(f"DEBUG: Existing subscription: {existing_sub}")
         
         if existing_sub:
-            print(f"DEBUG: Продлеваю подписку...")
-            # Продлеваем существующую подписку на 30 дней
+            # Продлеваем
             from datetime import datetime, timedelta
             current_end_str = existing_sub[5]
             current_end = datetime.fromisoformat(current_end_str)
@@ -73,11 +66,10 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
             else:
                 new_end = current_end + timedelta(days=SUBSCRIPTION_DURATION_DAYS)
             
-            # Генерируем новый ключ с учётом выбора
-            vpn_key, user_uuid = await VPNService.generate_vpn_key(user_id, server, protocol, is_trial=False)
+            # Генерируем ключ (всегда сервер 1)
+            vpn_key, user_uuid = await VPNService.generate_vpn_key(user_id, 1, protocol, is_trial=False)
             
             if vpn_key and user_uuid:
-                # Обновляем подписку
                 db.cursor.execute('''
                     UPDATE subscriptions
                     SET end_date = ?, is_trial = 0, vpn_key = ?, user_uuid = ?
@@ -85,16 +77,14 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
                 ''', (new_end.isoformat(), vpn_key, user_uuid, user_id))
                 db.connection.commit()
         else:
-            print(f"DEBUG: Подписки нет, создаю новую...")
-            # Создаем новую подписку с выбранными настройками
-            vpn_key, user_uuid = await VPNService.generate_vpn_key(user_id, server, protocol, is_trial=False)
+            # Создаем новую
+            vpn_key, user_uuid = await VPNService.generate_vpn_key(user_id, 1, protocol, is_trial=False)
             if vpn_key and user_uuid:
                 db.add_subscription(user_id, vpn_key, user_uuid, SUBSCRIPTION_DURATION_DAYS)
         
-        # Обновляем статус платежа
         db.update_payment_status(payload, 'paid')
         
-        # Начисляем бонус рефереру
+        # Бонус рефереру
         user_data = db.get_user(user_id)
         if user_data and user_data[2]:
             referrer_id = user_data[2]
@@ -104,19 +94,16 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
         context.user_data.pop('pending_stars_payment', None)
         
         protocol_name = "V2Ray" if protocol == 'v2ray' else "WireGuard"
-        server_name = "🎯 TikTok (RU)" if server == 1 else "⚡ Скорость (NL)"
         
         await update.message.reply_text(
-            f"✅ Оплата Stars успешно обработана!\n\n"
-            f"🎉 Подписка продлена на {SUBSCRIPTION_DURATION_DAYS} дней!\n\n"
-            f"Сервер: {server_name}\n"
+            f"Оплата Stars успешно обработана!\n\n"
+            f"Подписка продлена на {SUBSCRIPTION_DURATION_DAYS} дней!\n\n"
             f"Протокол: {protocol_name}\n\n"
             f"Используйте кнопку 'Настроить VPN' для получения ключа.",
             reply_markup=get_main_keyboard()
         )
     else:
-        print(f"DEBUG: Платеж не найден или не pending")
         await update.message.reply_text(
-            "❌ Ошибка обработки платежа. Обратитесь в поддержку.",
+            "Ошибка обработки платежа. Обратитесь в поддержку.",
             reply_markup=get_main_keyboard()
         )

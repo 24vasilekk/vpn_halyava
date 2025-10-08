@@ -59,7 +59,7 @@ async def check_payment_command(update: Update, context: ContextTypes.DEFAULT_TY
     
     if not payment_id:
         await update.message.reply_text(
-            "❌ Нет ожидающих платежей.",
+            "Нет ожидающих платежей.",
             reply_markup=get_main_keyboard()
         )
         return
@@ -69,10 +69,10 @@ async def check_payment_command(update: Update, context: ContextTypes.DEFAULT_TY
         
         if is_paid:
             # Получаем настройки пользователя
-            server, protocol = db.get_user_preferences(user_id)
+            _, protocol = db.get_user_preferences(user_id)
             
-            # Генерируем новый ключ с учётом выбора
-            vpn_key, user_uuid = await VPNService.generate_vpn_key(user_id, server, protocol, is_trial=False)
+            # Генерируем ключ (всегда сервер 1)
+            vpn_key, user_uuid = await VPNService.generate_vpn_key(user_id, 1, protocol, is_trial=False)
             
             if vpn_key and user_uuid:
                 # Активируем подписку
@@ -83,38 +83,35 @@ async def check_payment_command(update: Update, context: ContextTypes.DEFAULT_TY
                 
                 # Начисляем бонус рефереру
                 user_data = db.get_user(user_id)
-                if user_data and user_data[2]:  # referrer_id
+                if user_data and user_data[2]:
                     referrer_id = user_data[2]
                     bonus = calculate_referral_bonus(SUBSCRIPTION_PRICE)
                     db.update_balance(referrer_id, bonus)
                 
-                # Очищаем pending payment
                 context.user_data.pop('pending_payment_id', None)
                 
                 protocol_name = "V2Ray" if protocol == 'v2ray' else "WireGuard"
-                server_name = "🎯 TikTok (RU)" if server == 1 else "⚡ Скорость (NL)"
                 
                 await update.message.reply_text(
-                    f"✅ Платеж успешно обработан!\n\n"
-                    f"🎉 Подписка активирована на {SUBSCRIPTION_DURATION_DAYS} дней!\n\n"
-                    f"Сервер: {server_name}\n"
+                    f"Платеж успешно обработан!\n\n"
+                    f"Подписка активирована на {SUBSCRIPTION_DURATION_DAYS} дней!\n\n"
                     f"Протокол: {protocol_name}\n\n"
                     f"Используйте кнопку 'Настроить VPN' для получения ключа.",
                     reply_markup=get_main_keyboard()
                 )
             else:
                 await update.message.reply_text(
-                    "❌ Ошибка генерации VPN ключа. Обратитесь в поддержку.",
+                    "Ошибка генерации VPN ключа. Обратитесь в поддержку.",
                     reply_markup=get_main_keyboard()
                 )
         else:
             await update.message.reply_text(
-                "⏳ Платеж еще не обработан. Пожалуйста, подождите немного и попробуйте снова.",
+                "Платеж еще не обработан. Пожалуйста, подождите немного и попробуйте снова.",
                 reply_markup=get_main_keyboard()
             )
     except Exception as e:
         print(f"Error in check_payment_command: {e}")
         await update.message.reply_text(
-            f"❌ Ошибка проверки платежа: {str(e)}",
+            f"Ошибка проверки платежа: {str(e)}",
             reply_markup=get_main_keyboard()
         )
