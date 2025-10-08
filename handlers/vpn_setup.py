@@ -95,11 +95,22 @@ async def get_key_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, d
     
     if protocol == 'v2ray':
         # V2Ray - отправляем ссылки
+        # Разделяем ссылки (если их несколько)
+        links = vpn_key.strip().split('\n\n')
+        
+        message = "Ваша подписка V2Ray\n\n"
+        message += f"Протокол: {protocol_name}\n\n"
+        message += "Ссылки подписки:\n\n"
+        
+        for link in links:
+            if link.strip():
+                message += f"`{link.strip()}`\n\n"
+        
+        message += "Нажмите на ссылку чтобы скопировать, затем добавьте в приложение V2Ray"
+        
         await query.message.reply_text(
-            f"Ваша подписка V2Ray\n\n"
-            f"Протокол: {protocol_name}\n\n"
-            f"Ссылки подписки:\n{vpn_key}\n\n"
-            f"Скопируйте и добавьте в приложение V2Ray",
+            message,
+            parse_mode='Markdown'
         )
     else:
         # WireGuard - отправляем файл
