@@ -46,74 +46,50 @@ class MarzbanService:
                 headers=headers
             )
             
-            subscription_token = None
-            
             if check_response.status_code == 200:
-                # Пользователь существует
-                print(f"DEBUG: Пользователь существует")
+                # Пользователь существует - возвращаем subscription URL
                 user_info = check_response.json()
-                subscription_token = user_info.get('subscription_url', '').split('/')[-1]
+                subscription_url = user_info.get('subscription_url', '')
                 
-                if not subscription_token:
-                    subscription_token = username
-            else:
-                # Создаём нового пользователя
-                user_data = {
-                    "username": username,
-                    "proxies": {
-                        "vless": {
-                            "flow": ""
-                        },
-                        "vmess": {}
-                    },
-                    "data_limit": 0,
-                    "expire": expire_timestamp,
-                    "status": "active",
-                    "inbounds": {
-                        "vless": ["VLESS TCP"],
-                        "vmess": ["VMess TCP"]
-                    }
+                if subscription_url:
+                    return subscription_url, username
+                else:
+                    # Fallback
+                    return f"{self.base_url}/sub/{username}", username
+            
+            # Создаём нового пользователя
+            user_data = {
+                "username": username,
+                "proxies": {
+                    "vless": {"flow": ""},
+                    "vmess": {}
+                },
+                "data_limit": 0,
+                "expire": expire_timestamp,
+                "status": "active",
+                "inbounds": {
+                    "vless": ["VLESS TCP"],
+                    "vmess": ["VMess TCP"]
                 }
-                
-                print(f"DEBUG: Создаю нового пользователя")
-                
-                response = requests.post(
-                    f"{self.base_url}/api/user",
-                    headers=headers,
-                    json=user_data
-                )
-                
-                if response.status_code != 200:
-                    print(f"Error creating user: {response.text}")
-                    return None, None
-                
-                user_info = response.json()
-                subscription_token = user_info.get('subscription_url', '').split('/')[-1]
-                
-                if not subscription_token:
-                    subscription_token = username
+            }
             
-            # Получаем конфиги из subscription endpoint
-            import base64
-            sub_response = requests.get(f"{self.base_url}/sub/{subscription_token}")
+            response = requests.post(
+                f"{self.base_url}/api/user",
+                headers=headers,
+                json=user_data
+            )
             
-            if sub_response.status_code == 200:
-                # Декодируем base64
-                try:
-                    decoded = base64.b64decode(sub_response.text).decode('utf-8')
-                    # Каждая строка - это отдельный конфиг
-                    configs = [line.strip() for line in decoded.split('\n') if line.strip()]
-                    
-                    if configs:
-                        # Возвращаем все конфиги
-                        all_configs = '\n\n'.join(configs)
-                        return all_configs, username
-                except Exception as e:
-                    print(f"DEBUG: Ошибка декодирования: {e}")
+            if response.status_code != 200:
+                print(f"Error creating user: {response.text}")
+                return None, None
             
-            # Fallback - просто subscription URL
-            subscription_url = f"{self.base_url}/sub/{subscription_token}"
-            return subscription_url, username
+            user_info = response.json()
+            subscription_url = user_info.get('subscription_url', '')
+            
+            if subscription_url:
+                return subscription_url, username
+            else:
+                return f"{self.base_url}/sub/{username}", username
                 
         except Exception as e:
             print(f"Error in create_user: {e}")
