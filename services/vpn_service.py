@@ -59,7 +59,7 @@ class VPNService:
         try:
             # Получаем занятые IP
             result = subprocess.run(['wg', 'show', 'wg0', 'allowed-ips'], 
-                                capture_output=True, text=True)
+                                capture_output=True, text=True, check=True)
             
             used_ips = []
             import re
@@ -76,17 +76,27 @@ class VPNService:
             print(f"Создаю WireGuard клиента с IP 10.66.66.{next_ip}")
             
             # Генерируем ключи
-            private_key = subprocess.run(['wg', 'genkey'], capture_output=True, text=True).stdout.strip()
-            public_key = subprocess.run(['wg', 'pubkey'], input=private_key, capture_output=True, text=True).stdout.strip()
-            preshared_key = subprocess.run(['wg', 'genpsk'], capture_output=True, text=True).stdout.strip()
+            private_key_result = subprocess.run(['wg', 'genkey'], capture_output=True, text=True, check=True)
+            private_key = private_key_result.stdout.strip()
+            
+            public_key_result = subprocess.run(['wg', 'pubkey'], input=private_key, capture_output=True, text=True, check=True)
+            public_key = public_key_result.stdout.strip()
+            
+            preshared_key_result = subprocess.run(['wg', 'genpsk'], capture_output=True, text=True, check=True)
+            preshared_key = preshared_key_result.stdout.strip()
             
             # Добавляем peer
+            with open('/tmp/psk.tmp', 'w') as f:
+                f.write(preshared_key)
+            
             subprocess.run([
                 'wg', 'set', 'wg0',
                 'peer', public_key,
-                'preshared-key', '/dev/stdin',
+                'preshared-key', '/tmp/psk.tmp',
                 'allowed-ips', f'10.66.66.{next_ip}/32'
-            ], input=preshared_key, text=True, check=True)
+            ], check=True)
+            
+            os.remove('/tmp/psk.tmp')
             
             subprocess.run(['wg-quick', 'save', 'wg0'], check=True)
             
@@ -103,7 +113,7 @@ Endpoint = {SERVER_1_WG_ENDPOINT}
 AllowedIPs = 0.0.0.0/0
 PersistentKeepalive = 25
 """
-            
+        
             # Сохраняем
             with open(config_path, 'w') as f:
                 f.write(config_text)
@@ -112,7 +122,7 @@ PersistentKeepalive = 25
             return config_text, client_name
             
         except Exception as e:
-            print(f"❌ Ошибка: {e}")
+            print(f"❌ Ошибка WireGuard: {e}")
             import traceback
             traceback.print_exc()
             return None, None
