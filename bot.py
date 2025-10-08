@@ -27,7 +27,6 @@ from handlers.vpn_setup import (
     device_selection_callback, 
     install_app_callback, 
     get_key_callback,
-    recreate_config_callback  # ← ДОБАВИТЬ
 )
 from handlers.stars_payment import (
     stars_payment_callback, 
