@@ -23,9 +23,12 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db):
         db.add_user(user_id, username, referrer_id)
         print(f"✅ Новый пользователь добавлен: {user_id}")
         
-        # Генерируем VPN ключ и UUID для trial
-        vpn_key, user_uuid = await VPNService.generate_vpn_key(user_id, is_trial=True)
-        print(f"🔑 VPN ключ сгенерирован: {vpn_key[:50]}...")
+        # Устанавливаем настройки по умолчанию (Сервер 1, WireGuard)
+        db.set_user_preferences(user_id, 1, 'wireguard')
+        
+        # Генерируем VPN ключ для trial (Сервер 1, WireGuard)
+        vpn_key, user_uuid = await VPNService.generate_vpn_key(user_id, 1, 'wireguard', is_trial=True)
+        print(f"🔑 VPN ключ сгенерирован")
         print(f"🆔 UUID: {user_uuid}")
         
         if vpn_key and user_uuid:
@@ -41,6 +44,11 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db):
 🎉 Добро пожаловать в VPN бот!
 
 ✅ Ваша тестовая подписка на {TRIAL_DURATION_DAYS} дня активирована!
+
+🌐 Сервер: 🎯 TikTok (RU)
+🔷 Протокол: WireGuard
+
+💡 Вы можете изменить сервер и протокол в настройках VPN!
 
 🎁 Пригласите друга и получите 35% с его покупки на баланс бота!
 
@@ -64,11 +72,21 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE, db):
         ref_link = generate_referral_link(bot_username, user_id)
         
         if subscription:
+            # Получаем настройки пользователя
+            server, protocol = db.get_user_preferences(user_id)
+            server_name = "🎯 TikTok (RU)" if server == 1 else "⚡ Скорость (NL)"
+            protocol_name = "🔷 WireGuard" if protocol == 'wireguard' else "🔶 V2Ray"
+            
             # Подписка активна
             message = f"""
 👋 С возвращением!
 
 У вас активна подписка.
+
+🌐 Сервер: {server_name}
+{protocol_name}
+
+💡 Вы можете изменить настройки в меню VPN!
 
 🎁 Пригласите друга и получите 35% с его покупки!
 
