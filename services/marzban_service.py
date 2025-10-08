@@ -40,7 +40,28 @@ class MarzbanService:
             username = f"user_{user_id}"
             expire_timestamp = int((datetime.now() + timedelta(days=duration_days)).timestamp())
             
-            # Создаём пользователя (обновлённый формат)
+            # Проверяем существует ли пользователь
+            check_response = requests.get(
+                f"{self.base_url}/api/user/{username}",
+                headers=headers
+            )
+            
+            if check_response.status_code == 200:
+                # Пользователь существует - получаем его данные
+                print(f"DEBUG: Пользователь существует, получаю данные")
+                user_info = check_response.json()
+                
+                # Получаем ссылку подписки
+                if 'links' in user_info and len(user_info['links']) > 0:
+                    subscription_url = user_info['links'][0]
+                elif 'subscription_url' in user_info:
+                    subscription_url = user_info['subscription_url']
+                else:
+                    subscription_url = f"{self.base_url}/sub/{username}"
+                
+                return subscription_url, username
+            
+            # Создаём нового пользователя
             user_data = {
                 "username": username,
                 "proxies": {
@@ -49,7 +70,7 @@ class MarzbanService:
                     },
                     "vmess": {}
                 },
-                "data_limit": 0,  # Безлимит
+                "data_limit": 0,
                 "expire": expire_timestamp,
                 "status": "active",
                 "inbounds": {
@@ -58,7 +79,7 @@ class MarzbanService:
                 }
             }
             
-            print(f"DEBUG: Отправляю запрос: {user_data}")
+            print(f"DEBUG: Создаю нового пользователя")
             
             response = requests.post(
                 f"{self.base_url}/api/user",
@@ -71,7 +92,6 @@ class MarzbanService:
             
             if response.status_code == 200:
                 user_info = response.json()
-                print(f"DEBUG: User info: {user_info}")
                 
                 # Получаем subscription_url из links
                 if 'links' in user_info and len(user_info['links']) > 0:
